@@ -13,15 +13,16 @@ yf.pdr_override()
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 from ta_funcs import *
-from model import *
 import requests
 
 @st.cache 
 def load_tickers():
+
+    """Scrap website to get ibrx100"""
+
     url = 'https://blog.toroinvestimentos.com.br/empresas-listadas-b3-bovespa'
     r = requests.get(url)
     ibrx100_df = pd.read_html(r.text, header=0)[1]
-    st.dataframe(ibrx100_df.head(3))
     return ibrx100_df.set_index('Código da ação')
 
 @st.cache
@@ -41,17 +42,16 @@ def get_data(asset):
         try:
             #stock = yf.download(asset)
             stock = pdr.get_data_yahoo(asset)
-            # st.write(asset)
-            # st.write(stock.tail())
             stock['return_t+1'] = stock['Adj Close'].pct_change(1).shift(-1)
             stock['cls_t+1'] = stock['return_t+1'].map(encode_class_target).astype('category')
-            
             return stock
         except:
-            sys.exit("No data collected from Yahoo Finance!")
-                  
+            sys.exit("No data collected from Yahoo Finance!")            
 
 def get_date():
+
+    """Select a period of time"""
+
     today = datetime.date.today()
     monthago = today - datetime.timedelta(days=30)
     start_date = st.sidebar.date_input('Start date', monthago)
@@ -64,6 +64,9 @@ def get_date():
         return None
 
 def plot_candlestick(stock,asset):
+
+    """ Plot stocks in candlestick format"""
+
     fig = go.Figure()
     fig.add_trace(go.Candlestick(x=stock.index,
                 open=stock['Open'],
@@ -108,38 +111,15 @@ def plot_candlestick(stock,asset):
     return fig 
 
 def get_ticker(ibrx100):
-    #create a select box
+
+    """format symbol according to yfinance asset ticker """
+
     symbol = st.sidebar.selectbox("Choose the stock", (list(ibrx100.index.sort_values())))
     asset = symbol+'.SA'    
     return symbol, asset
 
-@st.cache
-def get_candle_features(df): #remove_zero_days=False
-    cdl_methods = [m for m in dir(ta) if 'CDL' in m]
-    df_cdl = pd.DataFrame(index=df.index)
-    
-    for mtd in cdl_methods:
-        df_cdl[mtd] = getattr(ta, mtd)(df['Open'], df['High'], df['Low'], df['Close'])
-    
-    # if remove_zero_days:
-    #     non_zero = df_cdl.sum(axis=1) != 0
-    #     tgt = tgt[non_zero]
-    #     df_cdl = df_cdl[non_zero]
-    
-    return df_cdl#, tgt    
-
-@st.cache
-def get_features(df, df_inp, target='return_t+1'):
-    df_candle = get_candle_features(df)
-    df_features = pd.concat([df_candle,df_inp], axis = 1)
-    df_target = df[target]
-    
-    #drop all rows with observations containing NAN
-    na_obs =[False if (x!=0) else True for x in df_features.isna().sum(axis=1)]
-    
-    return df_features[na_obs], df_target[na_obs]
-
 def func_ind(ind,list_ind):
+
     """Calculate indicators"""
 
     if ('ADX' == list_ind):
@@ -206,9 +186,13 @@ def func_ind(ind,list_ind):
 
 def get_plot_indicators(ind, multi_indicator, start_date,end_date):
 
+    """ Calculate and plot indicators 
+    Returns fig and dataframe with [multi_indicator] indicators
+    """
+
     nrows = len(multi_indicator)+1
     fig = make_subplots(rows=nrows, 
-        cols=1, shared_xaxes=False,vertical_spacing=0.05, subplot_titles=tuple(multi_indicator))
+        cols=1, shared_xaxes=False,vertical_spacing=0.06, subplot_titles=tuple(multi_indicator))
     
     aux_df = pd.DataFrame()
     for j,i in enumerate(multi_indicator):
@@ -325,7 +309,7 @@ def get_plot_indicators(ind, multi_indicator, start_date,end_date):
                     'line' : dict(color="Black",
                     width=0.5,
                     dash="dashdot")}, row = j+1, col=1)
-                    
+
             fig.add_shape({
                 'type':"line",
                     'xref':"x",
@@ -358,8 +342,7 @@ def get_plot_indicators(ind, multi_indicator, start_date,end_date):
 
 def main():
     st.title("Stock Market")
-    
-   
+       
     #load a list of 100 stocks from iBRX100
     b3_df = load_tickers()
 
@@ -388,7 +371,7 @@ def main():
     st.sidebar.subheader("Select period of visualization")
 
     end_date = datetime.date.today()
-    period_analysis = st.sidebar.radio("Period", ("1d", "1w", "1m", "3m", "6m", "1y"))
+    period_analysis = st.sidebar.radio("Period", ("1d", "1w", "1m", "3m", "6m", "1y", '2y'))
 
     if period_analysis == "1d":
         start_date = end_date - datetime.timedelta(days=1) 
@@ -402,6 +385,8 @@ def main():
         start_date = end_date - datetime.timedelta(days=183)
     elif period_analysis == "1y":
         start_date = end_date - datetime.timedelta(days=365)
+    elif period_analysis == "2y":
+        start_date = end_date - datetime.timedelta(days=365*2)
 
     st.write("from", start_date, "to", end_date)
     list_of_indicators = ['ADX','SAR', 'RSI','STOCH', 'CCI', 'MACD', 'OBV', \
@@ -417,9 +402,8 @@ def main():
         st.dataframe(stock_df.describe())
     
     st.sidebar.title("About")
-    st.sidebar.info("This code was developed by (Simone)[]")
-
-    st.sidebar.info('More info about Ta-lib functions on: (TA-lib repository)[https://mrjbq7.github.io/ta-lib/func.html]')
+    st.sidebar.info("This code was developed by [Simone](https://www.linkedin.com/in/simonezambonim/). \
+        More info about Ta-lib functions on [TA-lib repository](https://mrjbq7.github.io/ta-lib/func.html)")
 
 
 if __name__=='__main__':
