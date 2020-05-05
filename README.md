@@ -36,4 +36,8 @@ If you have problems installing TA-lib, check a full guide (here).[https://blog.
 
 * [Streamlit](https://docs.streamlit.io/api.html) - The web framework 
 * [Plotly](https://plotly.com/python/) - Interactive plots
-* [TAlib](https://mrjbq7.github.io/ta-lib/)
+* [TAlib](https://mrjbq7.github.io/ta-lib/) - Technical Analysis Library
+
+## Author
+
+* **Simone Rosana Zambonim**  - [Linkedin](https://www.linkedin.com/in/simonezambonim/) [Github](https://github.com/simonezambonim/)
